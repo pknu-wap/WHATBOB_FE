@@ -17,6 +17,8 @@ import { Feather } from "@expo/vector-icons";
 
 import { scheduleOnRN } from "react-native-worklets";
 
+import { getRandomMenu, type RandomMenu } from "@/lib/random_menu";
+
 const handleBack = () => {
   if (router.canGoBack()) router.back();
   else router.replace("/home");
@@ -26,6 +28,11 @@ export default function PickWithFriendScreen() {
   const [isPicking, setIsPicking] = useState(false);
   const [topOpen, setTopOpen] = useState(false);
   const [foodShow, setFoodShow] = useState(false);
+  const [menuOnceShown, setMenuOnceShown] = useState(false);
+
+  const [menu, setMenu] = useState<RandomMenu | null>(null);
+  const [menuError, setMenuError] = useState<string | null>(null);
+  const [seenFoodList, setSeenFoodList] = useState<string[]>([]);
 
   const rotation = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -35,11 +42,22 @@ export default function PickWithFriendScreen() {
     handleMoveUp();
   };
 
-  const showResult = () => {
-    setFoodShow(true);
+  const loadMenu = async () => {
+    setMenu(null);
+    setMenuError(null);
+    try {
+      const picked = await getRandomMenu([], seenFoodList);
+      setMenu(picked);
+      setSeenFoodList((prev) => [...prev, picked.name]);
+    } catch (e) {
+      setMenuError(
+        e instanceof Error ? e.message : "메뉴를 불러오지 못했어요.",
+      );
+    }
   };
 
   const startAnimation = () => {
+    loadMenu();
     setIsPicking(true);
     setTopOpen(false);
     setFoodShow(false);
@@ -58,6 +76,7 @@ export default function PickWithFriendScreen() {
       if (finished) {
         scheduleOnRN(setIsPicking, false);
         scheduleOnRN(setFoodShow, true);
+        scheduleOnRN(setMenuOnceShown, true);
       }
     });
   };
@@ -85,46 +104,74 @@ export default function PickWithFriendScreen() {
       </View>
       <ScrollView contentContainerStyle={styles.page} bounces={false}>
         <View style={styles.content}>
-          <Animated.View
-            style={[
-              styles.overlay,
-              animatedStyle,
-              { opacity: topOpen ? 0 : 1 },
-            ]}
-          >
+          <View style={styles.stage}>
+            <Animated.View
+              style={[
+                styles.overlay,
+                animatedStyle,
+                { opacity: topOpen ? 0 : 1 },
+              ]}
+            >
+              <Image
+                source={require("@/assets/images/random_dish.png")}
+                contentFit="contain"
+                style={styles.dish}
+              />
+            </Animated.View>
             <Image
-              source={require("@/assets/images/random_dish.png")}
+              source={require("@/assets/images/random_dish_bottom.png")}
               contentFit="contain"
-              style={styles.dish}
+              style={[
+                styles.dish,
+                styles.overlay,
+                { opacity: topOpen ? 1 : 0 },
+              ]}
             />
-          </Animated.View>
-          <Image
-            source={require("@/assets/images/random_dish_bottom.png")}
-            contentFit="contain"
-            style={[styles.dish, styles.overlay, { opacity: topOpen ? 1 : 0 }]}
-          />
-          <Animated.View style={[styles.overlay, animatedCap]}>
+            <Animated.View style={[styles.overlay, animatedCap]}>
+              <Image
+                source={require("@/assets/images/random_dish_top.png")}
+                contentFit="contain"
+                style={[styles.dish, { opacity: topOpen ? 1 : 0 }]}
+              />
+            </Animated.View>
             <Image
-              source={require("@/assets/images/random_dish_top.png")}
+              source={require("@/assets/images/whatbob_icon.png")}
               contentFit="contain"
-              style={[styles.dish, { opacity: topOpen ? 1 : 0 }]}
+              style={[
+                styles.resultImage,
+                styles.overlay,
+                { opacity: foodShow ? 1 : 0 },
+              ]}
             />
-          </Animated.View>
-          <Image
-            source={require("@/assets/images/whatbob_icon.png")}
-            contentFit="contain"
-            style={[
-              styles.resultImage,
-              styles.overlay,
-              { opacity: foodShow ? 1 : 0 },
-            ]}
-          />
+          </View>
+          <Text style={[styles.resultText, { opacity: foodShow ? 1 : 0 }]}>
+            {menuError ?? menu?.name ?? "..."}
+          </Text>
+          <View style={styles.spacer} />
           <Pressable
-            style={styles.pickButton}
-            disabled={isPicking}
-            onPress={startAnimation}
+            style={[
+              styles.selectButton,
+              { opacity: isPicking ? 0 : 1 },
+              { height: menuOnceShown ? 70 : 0 },
+              { marginBottom: menuOnceShown ? 7 : 0 },
+            ]}
+            onPress={() => console.log("메뉴 선택!")}
+            disabled={isPicking || !menu}
           >
-            <Text style={styles.pickButtonText}>아무거나 골라줘!</Text>
+            <Text style={styles.selectButtonText}>좋아 이 메뉴로!</Text>
+          </Pressable>
+          <Pressable
+            style={[
+              styles.pickButton,
+              { opacity: isPicking ? 0 : 1 },
+              { marginBottom: menuOnceShown ? 60 : 130 },
+            ]}
+            onPress={startAnimation}
+            disabled={isPicking}
+          >
+            <Text style={styles.pickButtonText}>
+              {menuOnceShown ? "다시! " : "아무거나 골라줘!"}
+            </Text>
           </Pressable>
         </View>
       </ScrollView>
@@ -156,7 +203,7 @@ const styles = StyleSheet.create({
     height: 58,
     width: 55,
     borderRadius: 100,
-    backgroundColor: "#F0EFE3",
+    backgroundColor: Colors.backGrey,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -174,6 +221,10 @@ const styles = StyleSheet.create({
     // justifyContent: "center",
     alignItems: "center",
   },
+  stage: {
+    width: 284,
+    height: 202,
+  },
   overlay: {
     position: "absolute",
   },
@@ -186,6 +237,11 @@ const styles = StyleSheet.create({
     height: 202,
     transform: [{ translateX: 15 }, { translateY: -50 }],
   },
+  resultText: {
+    fontFamily: Fonts.nonpreferencefood,
+    fontSize: 30,
+    marginTop: 25,
+  },
   pickButton: {
     backgroundColor: "#F0EFE3",
     borderRadius: 100,
@@ -193,12 +249,27 @@ const styles = StyleSheet.create({
     height: 70,
     alignItems: "center",
     justifyContent: "center",
-    marginTop: 148,
-
-    transform: [{ translateY: 300 }],
+    marginBottom: 130,
   },
   pickButtonText: {
     fontFamily: Fonts.nonpreferencefood,
     fontSize: 20,
+  },
+  spacer: {
+    flexGrow: 1,
+    minHeight: 48,
+  },
+  selectButton: {
+    backgroundColor: Colors.textBrown,
+    borderRadius: 100,
+    width: "100%",
+    height: 70,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  selectButtonText: {
+    fontFamily: Fonts.nonpreferencefood,
+    fontSize: 20,
+    color: Colors.white,
   },
 });
