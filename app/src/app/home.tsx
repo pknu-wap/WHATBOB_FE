@@ -21,6 +21,10 @@ export default function HomeScreen() {
     router.push("/pick_with_friend");
   };
 
+  const handleToFoodHistory = () => {
+    router.push("/food_history");
+  };
+
   return (
     <View style={{ flex: 1 }}>
       <SafeAreaView style={styles.safeArea}>
@@ -77,7 +81,10 @@ export default function HomeScreen() {
                     style={styles.smallButtonImage}
                   />
                 </Pressable>
-                <Pressable style={styles.smallButton}>
+                <Pressable
+                  style={styles.smallButton}
+                  onPress={handleToFoodHistory}
+                >
                   <Image
                     source={require("@/assets/images/eat_history_button.png")}
                     contentFit="contain"
