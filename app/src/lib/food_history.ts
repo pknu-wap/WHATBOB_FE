@@ -21,10 +21,11 @@ type FoodHistoryResponse = {
 
 export async function getFoodHistory(
   limit = 50,
+  offset = 0,
   signal?: AbortSignal,
 ): Promise<FoodHistoryData> {
   const result = await apiFetch<FoodHistoryResponse>(
-    `/api/users/me/meals?limit=${limit}`,
+    `/api/users/me/meals?limit=${limit}&offset=${offset}`,
     { signal },
   );
   if (

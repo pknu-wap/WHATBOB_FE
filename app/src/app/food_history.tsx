@@ -19,13 +19,14 @@ import {
   type FoodHistory,
 } from "@/lib/food_history";
 import { Colors, Fonts } from "@/constants/theme";
+import { RotationGestureHandler } from "react-native-gesture-handler";
 
 const handleBack = () => {
   if (router.canGoBack()) router.back();
   else router.replace("/home");
 };
 
-export default function foodHistoryScreen() {
+export default function FoodHistoryScreen() {
   const { width, height } = useWindowDimensions();
 
   const calcFontSize = () => {
@@ -34,17 +35,25 @@ export default function foodHistoryScreen() {
     else return 23;
   };
 
+  const PAGE_SIZE = 50;
+
   const [meals, setMeals] = useState<FoodHistory[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const [totalCount, setTotalCount] = useState(0);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [moreError, setMoreError] = useState(false);
+  const hasMore = meals.length < totalCount;
 
   useFocusEffect(
     useCallback(() => {
       const controller = new AbortController();
 
-      getFoodHistory(50, controller.signal)
+      getFoodHistory(50, 0, controller.signal)
         .then((data) => {
           setMeals(data.items);
+          setTotalCount(data.total_count);
           setError(null);
         })
         .catch((e) => {
@@ -60,6 +69,24 @@ export default function foodHistoryScreen() {
       return () => controller.abort();
     }, []),
   );
+
+  const handleLoadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    setMoreError(false);
+    try {
+      const data = await getFoodHistory(PAGE_SIZE, meals.length);
+      setMeals((prev) => {
+        const ids = new Set(prev.map((meal) => meal.id));
+        return [...prev, ...data.items.filter((meal) => !ids.has(meal.id))];
+      });
+      setTotalCount(data.total_count);
+    } catch {
+      setMoreError(true);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -88,6 +115,21 @@ export default function foodHistoryScreen() {
               />
             ))
           )}
+          {!loading && !error && hasMore && (
+            <Pressable
+              style={styles.moreButton}
+              onPress={handleLoadMore}
+              disabled={loadingMore}
+            >
+              <Text style={styles.moreButtonText}>
+                {loadingMore
+                  ? "불러오는 중..."
+                  : moreError
+                    ? "불러오지 못했어요. 다시 시도"
+                    : "더보기"}
+              </Text>
+            </Pressable>
+          )}
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -109,7 +151,7 @@ function FoodList({ menu, place, when }: FoodListProps) {
             {menu}
           </Text>
           <Text style={styles.placeText} numberOfLines={1}>
-            in {place}
+            {place != null ? `in ${place}` : ""}
           </Text>
         </View>
         <Text style={styles.whenText}>{when}</Text>
@@ -194,5 +236,15 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: Colors.backGrey,
     marginBottom: 20,
+  },
+  moreButton: {
+    width: "100%",
+    alignItems: "center",
+    // 디자인 필요
+  },
+  moreButtonText: {
+    fontFamily: Fonts.bodyMedium,
+    fontSize: 14,
+    color: Colors.textSecondary,
   },
 });
