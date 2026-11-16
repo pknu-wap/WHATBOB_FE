@@ -32,6 +32,7 @@ export const Fonts = {
   bodyBlack: "PretendardBlack",
   bodySemiBold: "PretendardSemiBold",
   bodyDesc: "Cafe24Simplehae",
+  danjunghae: "Cafe24Danjunghae",
   bodyMedium: "PretendardMedium",
   nonpreferencefood: "BusanDandiMyeongjoM",
 } as const;

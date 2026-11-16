@@ -13,6 +13,7 @@ export default function RootLayout() {
   const [loaded, error] = useFonts({
     Cafe24Ssurround: require("../../assets/fonts/Cafe24Ssurround-v2.0.otf"),
     Cafe24Simplehae: require("../../assets/fonts/Cafe24Simplehae-v2.0.otf"),
+    Cafe24Danjunghae: require("../../assets/fonts/Cafe24Danjunghae-v2.0.otf"),
     PretendardBold: require("../../assets/fonts/Pretendard-Bold.otf"),
     PretendardBlack: require("../../assets/fonts/Pretendard-Black.otf"),
     PretendardSemiBold: require("../../assets/fonts/Pretendard-SemiBold.otf"),
